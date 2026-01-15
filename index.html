@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Volleyball Stats Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Volleyball Stats Tracker</h1>
+            <div class="controls">
+                <button id="editBtn" class="control-btn">Edit</button>
+                <button id="undoBtn" class="control-btn" disabled>Undo</button>
+                <button id="resetBtn" class="control-btn">Reset Game</button>
+                <button id="exportBtn" class="control-btn">Export CSV</button>
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <div class="tabs" id="tabs">
+            <button class="tab-btn active" data-tab="tournament">Tournament Totals</button>
+            <button class="tab-btn" data-tab="game" data-game-index="0">Game 1</button>
+            <button class="tab-btn" data-tab="game" data-game-index="1">Game 2</button>
+            <button class="tab-btn" data-tab="game" data-game-index="2">Game 3</button>
+            <button class="tab-btn" data-tab="game" data-game-index="3">Game 4</button>
+            <button class="tab-btn" data-tab="game" data-game-index="4">Game 5</button>
+            <button class="tab-btn" data-tab="game" data-game-index="5">Game 6</button>
+            <button class="tab-btn" data-tab="game" data-game-index="6">Game 7</button>
+            <button class="tab-btn" data-tab="game" data-game-index="7">Game 8</button>
+            <button class="tab-btn" data-tab="game" data-game-index="8">Game 9</button>
+            <button class="tab-btn" data-tab="game" data-game-index="9">Game 10</button>
+        </div>
+
+        <!-- Game name input -->
+        <div class="game-name-row">
+            <label for="gameName">Game Name:</label>
+            <input id="gameName" type="text" placeholder="e.g., Match vs Hawks">
+        </div>
+        
+        <!-- Edit Modal -->
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <h2 id="editModalTitle">Edit</h2>
+                <div class="edit-input-group">
+                    <label id="editLabel" for="editInput">Value:</label>
+                    <input type="text" id="editInput" autofocus>
+                </div>
+                <div class="modal-buttons">
+                    <button id="acceptBtn" class="modal-btn accept-btn">Accept</button>
+                    <button id="cancelBtn" class="modal-btn cancel-btn">Cancel</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-wrapper">
+            <table id="statsTable">
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="player-col">PLAYER</th>
+                        <th colspan="4" class="section-header">SERVING</th>
+                        <th colspan="5" class="section-header">SERVE/RECEIVE</th>
+                        <th colspan="4" class="section-header">ATTACKING</th>
+                    </tr>
+                    <tr>
+                        <th>GOOD</th>
+                        <th>ACE</th>
+                        <th>ERROR</th>
+                        <th>Pass %</th>
+                        <th>3</th>
+                        <th>2</th>
+                        <th>1</th>
+                        <th>0</th>
+                        <th>Serve %</th>
+                        <th>ATMPTS</th>
+                        <th>KILLS</th>
+                        <th>ERROR</th>
+                        <th>Hit %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-player="ZOE">
+                        <td class="player-name">ZOE</td>
+                        <td class="stat-cell" data-stat="serving-good">0</td>
+                        <td class="stat-cell" data-stat="serving-ace">0</td>
+                        <td class="stat-cell" data-stat="serving-error">0</td>
+                        <td class="calc-cell serve-percent">0%</td>
+                        <td class="stat-cell" data-stat="receive-3">0</td>
+                        <td class="stat-cell" data-stat="receive-2">0</td>
+                        <td class="stat-cell" data-stat="receive-1">0</td>
+                        <td class="stat-cell" data-stat="receive-0">0</td>
+                        <td class="calc-cell receive-percent">0.00</td>
+                        <td class="stat-cell" data-stat="attacking-atmpts">0</td>
+                        <td class="stat-cell" data-stat="attacking-kills">0</td>
+                        <td class="stat-cell" data-stat="attacking-error">0</td>
+                        <td class="calc-cell hit-percent">0.000</td>
+                    </tr>
+                    <tr data-player="AUBREY">
+                        <td class="player-name">AUBREY</td>
+                        <td class="stat-cell" data-stat="serving-good">0</td>
+                        <td class="stat-cell" data-stat="serving-ace">0</td>
+                        <td class="stat-cell" data-stat="serving-error">0</td>
+                        <td class="calc-cell serve-percent">0%</td>
+                        <td class="stat-cell" data-stat="receive-3">0</td>
+                        <td class="stat-cell" data-stat="receive-2">0</td>
+                        <td class="stat-cell" data-stat="receive-1">0</td>
+                        <td class="stat-cell" data-stat="receive-0">0</td>
+                        <td class="calc-cell receive-percent">0.00</td>
+                        <td class="stat-cell" data-stat="attacking-atmpts">0</td>
+                        <td class="stat-cell" data-stat="attacking-kills">0</td>
+                        <td class="stat-cell" data-stat="attacking-error">0</td>
+                        <td class="calc-cell hit-percent">0.000</td>
+                    </tr>
+                    <tr data-player="EVELYN">
+                        <td class="player-name">EVELYN</td>
+                        <td class="stat-cell" data-stat="serving-good">0</td>
+                        <td class="stat-cell" data-stat="serving-ace">0</td>
+                        <td class="stat-cell" data-stat="serving-error">0</td>
+                        <td class="calc-cell serve-percent">0%</td>
+                        <td class="stat-cell" data-stat="receive-3">0</td>
+                        <td class="stat-cell" data-stat="receive-2">0</td>
+                        <td class="stat-cell" data-stat="receive-1">0</td>
+                        <td class="stat-cell" data-stat="receive-0">0</td>
+                        <td class="calc-cell receive-percent">0.00</td>
+                        <td class="stat-cell" data-stat="attacking-atmpts">0</td>
+                        <td class="stat-cell" data-stat="attacking-kills">0</td>
+                        <td class="stat-cell" data-stat="attacking-error">0</td>
+                        <td class="calc-cell hit-percent">0.000</td>
+                    </tr>
+                    <tr data-player="EMMA">
+                        <td class="player-name">EMMA</td>
+                        <td class="stat-cell" data-stat="serving-good">0</td>
+                        <td class="stat-cell" data-stat="serving-ace">0</td>
+                        <td class="stat-cell" data-stat="serving-error">0</td>
+                        <td class="calc-cell serve-percent">0%</td>
+                        <td class="stat-cell" data-stat="receive-3">0</td>
+                        <td class="stat-cell" data-stat="receive-2">0</td>
+                        <td class="stat-cell" data-stat="receive-1">0</td>
+                        <td class="stat-cell" data-stat="receive-0">0</td>
+                        <td class="calc-cell receive-percent">0.00</td>
+                        <td class="stat-cell" data-stat="attacking-atmpts">0</td>
+                        <td class="stat-cell" data-stat="attacking-kills">0</td>
+                        <td class="stat-cell" data-stat="attacking-error">0</td>
+                        <td class="calc-cell hit-percent">0.000</td>
+                    </tr>
+                    <tr data-player="KARLEA">
+                        <td class="player-name">KARLEA</td>
+                        <td class="stat-cell" data-stat="serving-good">0</td>
+                        <td class="stat-cell" data-stat="serving-ace">0</td>
+                        <td class="stat-cell" data-stat="serving-error">0</td>
+                        <td class="calc-cell serve-percent">0%</td>
+                        <td class="stat-cell" data-stat="receive-3">0</td>
+                        <td class="stat-cell" data-stat="receive-2">0</td>
+                        <td class="stat-cell" data-stat="receive-1">0</td>
+                        <td class="stat-cell" data-stat="receive-0">0</td>
+                        <td class="calc-cell receive-percent">0.00</td>
+                        <td class="stat-cell" data-stat="attacking-atmpts">0</td>
+                        <td class="stat-cell" data-stat="attacking-kills">0</td>
+                        <td class="stat-cell" data-stat="attacking-error">0</td>
+                        <td class="calc-cell hit-percent">0.000</td>
+                    </tr>
+                    <tr data-player="BRI">
+                        <td class="player-name">BRI</td>
+                        <td class="stat-cell" data-stat="serving-good">0</td>
+                        <td class="stat-cell" data-stat="serving-ace">0</td>
+                        <td class="stat-cell" data-stat="serving-error">0</td>
+                        <td class="calc-cell serve-percent">0%</td>
+                        <td class="stat-cell" data-stat="receive-3">0</td>
+                        <td class="stat-cell" data-stat="receive-2">0</td>
+                        <td class="stat-cell" data-stat="receive-1">0</td>
+                        <td class="stat-cell" data-stat="receive-0">0</td>
+                        <td class="calc-cell receive-percent">0.00</td>
+                        <td class="stat-cell" data-stat="attacking-atmpts">0</td>
+                        <td class="stat-cell" data-stat="attacking-kills">0</td>
+                        <td class="stat-cell" data-stat="attacking-error">0</td>
+                        <td class="calc-cell hit-percent">0.000</td>
+                    </tr>
+                    <tr data-player="BRIDGET">
+                        <td class="player-name">BRIDGET</td>
+                        <td class="stat-cell" data-stat="serving-good">0</td>
+                        <td class="stat-cell" data-stat="serving-ace">0</td>
+                        <td class="stat-cell" data-stat="serving-error">0</td>
+                        <td class="calc-cell serve-percent">0%</td>
+                        <td class="stat-cell" data-stat="receive-3">0</td>
+                        <td class="stat-cell" data-stat="receive-2">0</td>
+                        <td class="stat-cell" data-stat="receive-1">0</td>
+                        <td class="stat-cell" data-stat="receive-0">0</td>
+                        <td class="calc-cell receive-percent">0.00</td>
+                        <td class="stat-cell" data-stat="attacking-atmpts">0</td>
+                        <td class="stat-cell" data-stat="attacking-kills">0</td>
+                        <td class="stat-cell" data-stat="attacking-error">0</td>
+                        <td class="calc-cell hit-percent">0.000</td>
+                    </tr>
+                    <tr data-player="MJ">
+                        <td class="player-name">MJ</td>
+                        <td class="stat-cell" data-stat="serving-good">0</td>
+                        <td class="stat-cell" data-stat="serving-ace">0</td>
+                        <td class="stat-cell" data-stat="serving-error">0</td>
+                        <td class="calc-cell serve-percent">0%</td>
+                        <td class="stat-cell" data-stat="receive-3">0</td>
+                        <td class="stat-cell" data-stat="receive-2">0</td>
+                        <td class="stat-cell" data-stat="receive-1">0</td>
+                        <td class="stat-cell" data-stat="receive-0">0</td>
+                        <td class="calc-cell receive-percent">0.00</td>
+                        <td class="stat-cell" data-stat="attacking-atmpts">0</td>
+                        <td class="stat-cell" data-stat="attacking-kills">0</td>
+                        <td class="stat-cell" data-stat="attacking-error">0</td>
+                        <td class="calc-cell hit-percent">0.000</td>
+                    </tr>
+                    <tr data-player="LAILA">
+                        <td class="player-name">LAILA</td>
+                        <td class="stat-cell" data-stat="serving-good">0</td>
+                        <td class="stat-cell" data-stat="serving-ace">0</td>
+                        <td class="stat-cell" data-stat="serving-error">0</td>
+                        <td class="calc-cell serve-percent">0%</td>
+                        <td class="stat-cell" data-stat="receive-3">0</td>
+                        <td class="stat-cell" data-stat="receive-2">0</td>
+                        <td class="stat-cell" data-stat="receive-1">0</td>
+                        <td class="stat-cell" data-stat="receive-0">0</td>
+                        <td class="calc-cell receive-percent">0.00</td>
+                        <td class="stat-cell" data-stat="attacking-atmpts">0</td>
+                        <td class="stat-cell" data-stat="attacking-kills">0</td>
+                        <td class="stat-cell" data-stat="attacking-error">0</td>
+                        <td class="calc-cell hit-percent">0.000</td>
+                    </tr>
+                    <tr data-player="BRET">
+                        <td class="player-name">BRET</td>
+                        <td class="stat-cell" data-stat="serving-good">0</td>
+                        <td class="stat-cell" data-stat="serving-ace">0</td>
+                        <td class="stat-cell" data-stat="serving-error">0</td>
+                        <td class="calc-cell serve-percent">0%</td>
+                        <td class="stat-cell" data-stat="receive-3">0</td>
+                        <td class="stat-cell" data-stat="receive-2">0</td>
+                        <td class="stat-cell" data-stat="receive-1">0</td>
+                        <td class="stat-cell" data-stat="receive-0">0</td>
+                        <td class="calc-cell receive-percent">0.00</td>
+                        <td class="stat-cell" data-stat="attacking-atmpts">0</td>
+                        <td class="stat-cell" data-stat="attacking-kills">0</td>
+                        <td class="stat-cell" data-stat="attacking-error">0</td>
+                        <td class="calc-cell hit-percent">0.000</td>
+                    </tr>
+                    <tr id="totals-row" class="totals-row">
+                        <td class="player-name totals-label">Totals</td>
+                        <td class="total-cell" data-total="serving-good">0</td>
+                        <td class="total-cell" data-total="serving-ace">0</td>
+                        <td class="total-cell" data-total="serving-error">0</td>
+                        <td class="total-cell calc-cell total-serve-percent">0%</td>
+                        <td class="total-cell" data-total="receive-3">0</td>
+                        <td class="total-cell" data-total="receive-2">0</td>
+                        <td class="total-cell" data-total="receive-1">0</td>
+                        <td class="total-cell" data-total="receive-0">0</td>
+                        <td class="total-cell calc-cell total-receive-percent">0.00</td>
+                        <td class="total-cell" data-total="attacking-atmpts">0</td>
+                        <td class="total-cell" data-total="attacking-kills">0</td>
+                        <td class="total-cell" data-total="attacking-error">0</td>
+                        <td class="total-cell calc-cell total-hit-percent">0.000</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+      <!-- Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./service-worker.js');
+        });
+        }
+    </script>
+</body>
+</html>
