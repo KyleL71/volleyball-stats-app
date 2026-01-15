@@ -2,7 +2,8 @@ const PLAYER_KEYS = ['ZOE', 'AUBREY', 'EVELYN', 'EMMA', 'KARLEA', 'BRI', 'BRIDGE
 const STAT_KEYS = [
     'serving-good', 'serving-ace', 'serving-error',
     'receive-3', 'receive-2', 'receive-1', 'receive-0',
-    'attacking-atmpts', 'attacking-kills', 'attacking-error'
+    'attacking-atmpts', 'attacking-kills', 'attacking-error',
+    'digging-good', 'digging-bad'
 ];
 
 // Player names mapping (data-player attribute -> displayed name) - shared across all games
@@ -279,6 +280,26 @@ function updateDisplay() {
         }
     });
 
+    // Update Dig % cells
+    document.querySelectorAll('tbody tr').forEach(row => {
+        const player = row.getAttribute('data-player');
+        if (!player) return;
+
+        const good = stats[player]?.['digging-good'] || 0;
+        const bad = stats[player]?.['digging-bad'] || 0;
+        const total = good + bad;
+
+        const digCell = row.querySelector('.dig-percent');
+        if (!digCell) return;
+
+        if (total === 0) {
+            digCell.textContent = '0%';
+        } else {
+            const pct = (good / total) * 100;
+            digCell.textContent = `${Math.round(pct)}%`;
+        }
+    });
+
     // Update totals row
     const totalsRow = document.getElementById('totals-row');
     if (totalsRow) {
@@ -292,7 +313,9 @@ function updateDisplay() {
             'receive-0',
             'attacking-atmpts',
             'attacking-kills',
-            'attacking-error'
+            'attacking-error',
+            'digging-good',
+            'digging-bad'
         ];
 
         const totals = {};
@@ -343,6 +366,20 @@ function updateDisplay() {
             } else {
                 const eff = (totals['attacking-kills'] - totals['attacking-error']) / attempts;
                 hitPctCell.textContent = eff.toFixed(3);
+            }
+        }
+
+        // Totals Dig %
+        const digPctCell = totalsRow.querySelector('.total-dig-percent');
+        if (digPctCell) {
+            const good = totals['digging-good'];
+            const bad = totals['digging-bad'];
+            const total = good + bad;
+            if (total === 0) {
+                digPctCell.textContent = '0%';
+            } else {
+                const pct = (good / total) * 100;
+                digPctCell.textContent = `${Math.round(pct)}%`;
             }
         }
     }
@@ -403,6 +440,58 @@ function resetStats() {
     }
 }
 
+function hardReset() {
+    const message = 'WARNING: This will permanently delete ALL saved data including:\n' +
+                   '- All tournament totals\n' +
+                   '- All game statistics\n' +
+                   '- All player names\n' +
+                   '- All game names\n\n' +
+                   'This action CANNOT be undone!\n\n' +
+                   'Are you absolutely sure you want to proceed?';
+    
+    if (confirm(message)) {
+        // Clear all localStorage items related to volleyball stats
+        localStorage.removeItem('volleyballGames');
+        localStorage.removeItem('volleyballPlayerNames');
+        localStorage.removeItem('volleyballStats'); // legacy
+        localStorage.removeItem('volleyballGameName'); // legacy
+        
+        // Reset games array
+        games = [];
+        for (let i = 0; i < 10; i++) {
+            games[i] = createEmptyGame(i);
+        }
+        
+        // Reset player names
+        playerNames = {};
+        ensurePlayerNames();
+        
+        // Reset active game index
+        activeGameIndex = -1;
+        
+        // Save the empty state
+        saveGames();
+        savePlayerNames();
+        
+        // Update UI
+        setActiveTab('tournament');
+        updateDisplay();
+        updateGameNameUI();
+        updateUndoButton();
+        
+        // Show confirmation
+        const hardResetBtn = document.getElementById('hardResetBtn');
+        const originalText = hardResetBtn.textContent;
+        hardResetBtn.textContent = 'Reset Complete!';
+        hardResetBtn.style.background = '#27ae60';
+        
+        setTimeout(() => {
+            hardResetBtn.textContent = originalText;
+            hardResetBtn.style.background = '';
+        }, 2000);
+    }
+}
+
 // Export to CSV
 function exportToCSV() {
     const players = PLAYER_KEYS.slice();
@@ -436,6 +525,13 @@ function exportToCSV() {
         return eff.toFixed(3);
     };
 
+    const calcDigPct = (good, bad) => {
+        const total = good + bad;
+        if (total === 0) return '0%';
+        const pct = (good / total) * 100;
+        return `${Math.round(pct)}%`;
+    };
+
     // Use the current view's stats (Tournament or active Game)
     const viewStats = getStatsForView();
 
@@ -450,7 +546,9 @@ function exportToCSV() {
         'receive-0': 0,
         'attacking-atmpts': 0,
         'attacking-kills': 0,
-        'attacking-error': 0
+        'attacking-error': 0,
+        'digging-good': 0,
+        'digging-bad': 0
     };
 
     players.forEach(player => {
@@ -464,6 +562,8 @@ function exportToCSV() {
         totals['attacking-atmpts'] += viewStats[player]?.['attacking-atmpts'] || 0;
         totals['attacking-kills'] += viewStats[player]?.['attacking-kills'] || 0;
         totals['attacking-error'] += viewStats[player]?.['attacking-error'] || 0;
+        totals['digging-good'] += viewStats[player]?.['digging-good'] || 0;
+        totals['digging-bad'] += viewStats[player]?.['digging-bad'] || 0;
     });
 
     // CSV content
@@ -491,7 +591,10 @@ function exportToCSV() {
         'Attacking Attempts',
         'Attacking Kills',
         'Attacking Error',
-        'Hit %'
+        'Hit %',
+        'Good Dig',
+        'Bad Dig',
+        'Dig %'
     ].map(escapeCsv).join(','));
 
     // Player rows
@@ -509,6 +612,9 @@ function exportToCSV() {
         const kills = viewStats[player]?.['attacking-kills'] || 0;
         const aerr = viewStats[player]?.['attacking-error'] || 0;
 
+        const dgood = viewStats[player]?.['digging-good'] || 0;
+        const dbad = viewStats[player]?.['digging-bad'] || 0;
+
         const row = [
             playerNames[player] || player,
             good,
@@ -523,7 +629,10 @@ function exportToCSV() {
             att,
             kills,
             aerr,
-            calcHitPct(att, kills, aerr)
+            calcHitPct(att, kills, aerr),
+            dgood,
+            dbad,
+            calcDigPct(dgood, dbad)
         ];
         lines.push(row.map(escapeCsv).join(','));
     });
@@ -543,7 +652,10 @@ function exportToCSV() {
         totals['attacking-atmpts'],
         totals['attacking-kills'],
         totals['attacking-error'],
-        calcHitPct(totals['attacking-atmpts'], totals['attacking-kills'], totals['attacking-error'])
+        calcHitPct(totals['attacking-atmpts'], totals['attacking-kills'], totals['attacking-error']),
+        totals['digging-good'],
+        totals['digging-bad'],
+        calcDigPct(totals['digging-good'], totals['digging-bad'])
     ].map(escapeCsv).join(','));
 
     const csv = lines.join('\n') + '\n';
@@ -782,6 +894,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Export button
     document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+    
+    // Hard Reset button
+    document.getElementById('hardResetBtn').addEventListener('click', hardReset);
     
     // Initialize undo button state
     updateUndoButton();

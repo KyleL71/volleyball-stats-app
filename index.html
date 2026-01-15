@@ -18,6 +18,7 @@
                 <button id="undoBtn" class="control-btn" disabled>Undo</button>
                 <button id="resetBtn" class="control-btn">Reset Game</button>
                 <button id="exportBtn" class="control-btn">Export CSV</button>
+                <button id="hardResetBtn" class="control-btn">Hard Reset</button>
             </div>
         </header>
 
@@ -65,6 +66,7 @@
                         <th colspan="4" class="section-header">SERVING</th>
                         <th colspan="5" class="section-header">SERVE/RECEIVE</th>
                         <th colspan="4" class="section-header">ATTACKING</th>
+                        <th colspan="3" class="section-header">DIGGING</th>
                     </tr>
                     <tr>
                         <th>GOOD</th>
@@ -80,6 +82,9 @@
                         <th>KILLS</th>
                         <th>ERROR</th>
                         <th>Hit %</th>
+                        <th>GOOD DIG</th>
+                        <th>BAD DIG</th>
+                        <th>Dig %</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -98,6 +103,9 @@
                         <td class="stat-cell" data-stat="attacking-kills">0</td>
                         <td class="stat-cell" data-stat="attacking-error">0</td>
                         <td class="calc-cell hit-percent">0.000</td>
+                        <td class="stat-cell" data-stat="digging-good">0</td>
+                        <td class="stat-cell" data-stat="digging-bad">0</td>
+                        <td class="calc-cell dig-percent">0%</td>
                     </tr>
                     <tr data-player="AUBREY">
                         <td class="player-name">AUBREY</td>
@@ -114,6 +122,9 @@
                         <td class="stat-cell" data-stat="attacking-kills">0</td>
                         <td class="stat-cell" data-stat="attacking-error">0</td>
                         <td class="calc-cell hit-percent">0.000</td>
+                        <td class="stat-cell" data-stat="digging-good">0</td>
+                        <td class="stat-cell" data-stat="digging-bad">0</td>
+                        <td class="calc-cell dig-percent">0%</td>
                     </tr>
                     <tr data-player="EVELYN">
                         <td class="player-name">EVELYN</td>
@@ -130,6 +141,9 @@
                         <td class="stat-cell" data-stat="attacking-kills">0</td>
                         <td class="stat-cell" data-stat="attacking-error">0</td>
                         <td class="calc-cell hit-percent">0.000</td>
+                        <td class="stat-cell" data-stat="digging-good">0</td>
+                        <td class="stat-cell" data-stat="digging-bad">0</td>
+                        <td class="calc-cell dig-percent">0%</td>
                     </tr>
                     <tr data-player="EMMA">
                         <td class="player-name">EMMA</td>
@@ -146,6 +160,9 @@
                         <td class="stat-cell" data-stat="attacking-kills">0</td>
                         <td class="stat-cell" data-stat="attacking-error">0</td>
                         <td class="calc-cell hit-percent">0.000</td>
+                        <td class="stat-cell" data-stat="digging-good">0</td>
+                        <td class="stat-cell" data-stat="digging-bad">0</td>
+                        <td class="calc-cell dig-percent">0%</td>
                     </tr>
                     <tr data-player="KARLEA">
                         <td class="player-name">KARLEA</td>
@@ -162,6 +179,9 @@
                         <td class="stat-cell" data-stat="attacking-kills">0</td>
                         <td class="stat-cell" data-stat="attacking-error">0</td>
                         <td class="calc-cell hit-percent">0.000</td>
+                        <td class="stat-cell" data-stat="digging-good">0</td>
+                        <td class="stat-cell" data-stat="digging-bad">0</td>
+                        <td class="calc-cell dig-percent">0%</td>
                     </tr>
                     <tr data-player="BRI">
                         <td class="player-name">BRI</td>
@@ -178,6 +198,9 @@
                         <td class="stat-cell" data-stat="attacking-kills">0</td>
                         <td class="stat-cell" data-stat="attacking-error">0</td>
                         <td class="calc-cell hit-percent">0.000</td>
+                        <td class="stat-cell" data-stat="digging-good">0</td>
+                        <td class="stat-cell" data-stat="digging-bad">0</td>
+                        <td class="calc-cell dig-percent">0%</td>
                     </tr>
                     <tr data-player="BRIDGET">
                         <td class="player-name">BRIDGET</td>
@@ -194,6 +217,9 @@
                         <td class="stat-cell" data-stat="attacking-kills">0</td>
                         <td class="stat-cell" data-stat="attacking-error">0</td>
                         <td class="calc-cell hit-percent">0.000</td>
+                        <td class="stat-cell" data-stat="digging-good">0</td>
+                        <td class="stat-cell" data-stat="digging-bad">0</td>
+                        <td class="calc-cell dig-percent">0%</td>
                     </tr>
                     <tr data-player="MJ">
                         <td class="player-name">MJ</td>
@@ -210,6 +236,9 @@
                         <td class="stat-cell" data-stat="attacking-kills">0</td>
                         <td class="stat-cell" data-stat="attacking-error">0</td>
                         <td class="calc-cell hit-percent">0.000</td>
+                        <td class="stat-cell" data-stat="digging-good">0</td>
+                        <td class="stat-cell" data-stat="digging-bad">0</td>
+                        <td class="calc-cell dig-percent">0%</td>
                     </tr>
                     <tr data-player="LAILA">
                         <td class="player-name">LAILA</td>
@@ -226,6 +255,9 @@
                         <td class="stat-cell" data-stat="attacking-kills">0</td>
                         <td class="stat-cell" data-stat="attacking-error">0</td>
                         <td class="calc-cell hit-percent">0.000</td>
+                        <td class="stat-cell" data-stat="digging-good">0</td>
+                        <td class="stat-cell" data-stat="digging-bad">0</td>
+                        <td class="calc-cell dig-percent">0%</td>
                     </tr>
                     <tr data-player="BRET">
                         <td class="player-name">BRET</td>
@@ -242,6 +274,9 @@
                         <td class="stat-cell" data-stat="attacking-kills">0</td>
                         <td class="stat-cell" data-stat="attacking-error">0</td>
                         <td class="calc-cell hit-percent">0.000</td>
+                        <td class="stat-cell" data-stat="digging-good">0</td>
+                        <td class="stat-cell" data-stat="digging-bad">0</td>
+                        <td class="calc-cell dig-percent">0%</td>
                     </tr>
                     <tr id="totals-row" class="totals-row">
                         <td class="player-name totals-label">Totals</td>
@@ -258,6 +293,9 @@
                         <td class="total-cell" data-total="attacking-kills">0</td>
                         <td class="total-cell" data-total="attacking-error">0</td>
                         <td class="total-cell calc-cell total-hit-percent">0.000</td>
+                        <td class="total-cell" data-total="digging-good">0</td>
+                        <td class="total-cell" data-total="digging-bad">0</td>
+                        <td class="total-cell calc-cell total-dig-percent">0%</td>
                     </tr>
                 </tbody>
             </table>
