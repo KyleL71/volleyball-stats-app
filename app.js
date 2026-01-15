@@ -9,6 +9,9 @@ const STAT_KEYS = [
 // Player names mapping (data-player attribute -> displayed name) - shared across all games
 let playerNames = {};
 
+// Tournament name
+let tournamentName = '';
+
 // 10 games of stats, each with its own history stack for Undo
 let games = [];
 
@@ -40,6 +43,10 @@ function createEmptyGame(index) {
 
 function savePlayerNames() {
     localStorage.setItem('volleyballPlayerNames', JSON.stringify(playerNames));
+}
+
+function saveTournamentName() {
+    localStorage.setItem('volleyballTournamentName', tournamentName);
 }
 
 function saveGames() {
@@ -84,9 +91,14 @@ function migrateLegacyIfNeeded() {
 function loadState() {
     const savedNames = localStorage.getItem('volleyballPlayerNames');
     const savedGames = localStorage.getItem('volleyballGames');
+    const savedTournamentName = localStorage.getItem('volleyballTournamentName');
 
     if (savedNames) {
         try { playerNames = JSON.parse(savedNames) || {}; } catch (_) { playerNames = {}; }
+    }
+
+    if (savedTournamentName) {
+        tournamentName = savedTournamentName;
     }
 
     if (savedGames) {
@@ -152,8 +164,9 @@ function updateGameNameUI() {
     if (isTournamentView()) {
         if (label) label.textContent = 'Tournament:';
         if (input) {
-            input.value = 'Tournament Totals';
-            input.disabled = true;
+            input.value = tournamentName || 'Tournament Totals';
+            input.disabled = false;
+            input.placeholder = 'Tournament Totals';
         }
         if (editBtn) editBtn.disabled = true;
         if (undoBtn) undoBtn.disabled = true;
@@ -166,6 +179,8 @@ function updateGameNameUI() {
         if (input) {
             input.disabled = false;
             input.value = g.name || '';
+            const gameNumber = activeGameIndex + 1;
+            input.placeholder = `Game ${gameNumber}`;
         }
         if (editBtn) editBtn.disabled = false;
         if (resetBtn) resetBtn.disabled = false;
@@ -453,6 +468,7 @@ function hardReset() {
         // Clear all localStorage items related to volleyball stats
         localStorage.removeItem('volleyballGames');
         localStorage.removeItem('volleyballPlayerNames');
+        localStorage.removeItem('volleyballTournamentName');
         localStorage.removeItem('volleyballStats'); // legacy
         localStorage.removeItem('volleyballGameName'); // legacy
         
@@ -466,12 +482,16 @@ function hardReset() {
         playerNames = {};
         ensurePlayerNames();
         
+        // Reset tournament name
+        tournamentName = '';
+        
         // Reset active game index
         activeGameIndex = -1;
         
         // Save the empty state
         saveGames();
         savePlayerNames();
+        saveTournamentName();
         
         // Update UI
         setActiveTab('tournament');
@@ -665,8 +685,23 @@ function exportToCSV() {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     
+    // Generate filename: Stats_(Game Name)_(Tournament Name).csv
+    const currentGameName = isTournamentView()
+        ? 'Tournament Totals'
+        : ((getActiveGame()?.name || '').trim() || `Game ${activeGameIndex + 1}`);
+    const currentTournamentName = (tournamentName || 'Tournament').trim();
+    
+    // Sanitize filename: remove invalid characters and replace spaces with underscores
+    const sanitizeFilename = (str) => {
+        return str.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, '_');
+    };
+    
+    const gameNamePart = sanitizeFilename(currentGameName);
+    const tournamentNamePart = sanitizeFilename(currentTournamentName);
+    const filename = `Stats_${gameNamePart}_${tournamentNamePart}.csv`;
+    
     link.setAttribute('href', url);
-    link.setAttribute('download', `volleyball_stats_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', filename);
     link.style.visibility = 'hidden';
     
     document.body.appendChild(link);
@@ -810,15 +845,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Game name input (per-game)
+    // Game name input (per-game) and Tournament name input
     const gameInput = document.getElementById('gameName');
     if (gameInput) {
         gameInput.addEventListener('input', (e) => {
-            if (isTournamentView()) return;
-            const g = getActiveGame();
-            if (!g) return;
-            g.name = e.target.value;
-            saveGames();
+            if (isTournamentView()) {
+                tournamentName = e.target.value;
+                saveTournamentName();
+            } else {
+                const g = getActiveGame();
+                if (!g) return;
+                g.name = e.target.value;
+                saveGames();
+            }
         });
     }
     
@@ -909,6 +948,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.hidden) {
             saveGames();
             savePlayerNames();
+            saveTournamentName();
         }
     });
     
@@ -916,5 +956,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('beforeunload', () => {
         saveGames();
         savePlayerNames();
+        saveTournamentName();
     });
 });
