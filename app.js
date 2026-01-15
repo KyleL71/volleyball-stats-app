@@ -12,10 +12,10 @@ let playerNames = {};
 // Tournament name
 let tournamentName = '';
 
-// 10 games of stats, each with its own history stack for Undo
+// 27 games of stats, each with its own history stack for Undo
 let games = [];
 
-// Active tab: -1 = Tournament Totals, 0-9 = Game 1..10
+// Active tab: -1 = Tournament Totals, 0-26 = Game 1..27
 let activeGameIndex = -1;
 
 // Edit mode state (only meaningful for game tabs)
@@ -105,9 +105,9 @@ function loadState() {
         try { games = JSON.parse(savedGames) || []; } catch (_) { games = []; }
     }
 
-    // Ensure 10 games exist
+    // Ensure 27 games exist
     if (!Array.isArray(games)) games = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 27; i++) {
         if (!games[i]) games[i] = createEmptyGame(i);
         if (!games[i].stats) games[i].stats = createEmptyStats();
         if (!Array.isArray(games[i].history)) games[i].history = [];
@@ -474,7 +474,7 @@ function hardReset() {
         
         // Reset games array
         games = [];
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 27; i++) {
             games[i] = createEmptyGame(i);
         }
         
@@ -809,7 +809,7 @@ function handleEditCancel() {
 
 // Set up event listeners
 document.addEventListener('DOMContentLoaded', () => {
-    // Load saved state (10 games + roster)
+    // Load saved state (27 games + roster)
     loadState();
     saveGames();
     
