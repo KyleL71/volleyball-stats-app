@@ -1,4 +1,11 @@
-const PLAYER_KEYS = ['ZOE', 'AUBREY', 'EVELYN', 'EMMA', 'KARLEA', 'BRI', 'BRIDGET', 'MJ', 'LAILA', 'BRET'];
+const PLAYER_KEYS = [
+    'ZOE', 'AUBREY', 'EVELYN', 'EMMA', 'KARLEA', 'BRI', 'BRIDGET', 'MJ', 'LAILA', 'BRET',
+    'PLAYER_11', 'PLAYER_12'
+];
+const DEFAULT_PLAYER_NAMES = {
+    ZOE: 'ZOE', AUBREY: 'AUBREY', EVELYN: 'EVELYN', EMMA: 'EMMA', KARLEA: 'KARLEA',
+    BRI: 'BRI', BRIDGET: 'BRIDGET', MJ: 'MJ', LAILA: 'LAILA', BRET: 'BRET'
+};
 const STAT_KEYS = [
     'serving-good', 'serving-ace', 'serving-error',
     'receive-3', 'receive-2', 'receive-1', 'receive-0',
@@ -6,8 +13,10 @@ const STAT_KEYS = [
     'digging-good', 'digging-bad'
 ];
 
-// Player names mapping (data-player attribute -> displayed name) - shared across all games
+// Active team's player names (data-player attribute -> displayed name)
 let playerNames = {};
+let teams = [];
+let activeTeamId = '';
 
 // Tournament name
 let tournamentName = '';
@@ -33,21 +42,43 @@ function createEmptyStats() {
     return s;
 }
 
+function createDefaultTeam(id = 'team-1', name = 'Team 1', names = DEFAULT_PLAYER_NAMES) {
+    const players = {};
+    PLAYER_KEYS.forEach(player => {
+        const playerName = typeof names[player] === 'string' ? names[player].trim() : '';
+        if (playerName) players[player] = playerName;
+    });
+    return { id, name, players };
+}
+
+function getActiveTeam() {
+    return teams.find(team => team.id === activeTeamId) || teams[0];
+}
+
+function getTeamPlayerKeys(team = getActiveTeam()) {
+    if (!team) return [];
+    return PLAYER_KEYS.filter(player => typeof team.players[player] === 'string' && team.players[player].trim());
+}
+
+function getStatsForGame(game, teamId = activeTeamId) {
+    return game?.statsByTeam?.[teamId] || createEmptyStats();
+}
+
 function createEmptyGame(name = '', id = null) {
     const gameId = id == null ? nextGameId++ : id;
     if (gameId >= nextGameId) nextGameId = gameId + 1;
     return {
         id: gameId,
         name: name || '',
-        stats: createEmptyStats(),
+        statsByTeam: Object.fromEntries(teams.map(team => [team.id, createEmptyStats()])),
         history: []
     };
 }
 
 function gameHasData(game) {
     if ((game?.name || '').trim()) return true;
-    if (!game?.stats) return false;
-    return PLAYER_KEYS.some(p => STAT_KEYS.some(k => (game.stats[p]?.[k] || 0) !== 0));
+    const allStats = Object.values(game?.statsByTeam || (game?.stats ? { legacy: game.stats } : {}));
+    return allStats.some(stats => PLAYER_KEYS.some(p => STAT_KEYS.some(k => (stats[p]?.[k] || 0) !== 0)));
 }
 
 function gameLabel(game, index) {
@@ -64,17 +95,26 @@ function normalizeGames() {
         return {
             id,
             name: typeof game.name === 'string' ? game.name : '',
-            stats: game.stats || createEmptyStats(),
+            statsByTeam: game.statsByTeam || { [teams[0].id]: game.stats || createEmptyStats() },
             history: Array.isArray(game.history) ? game.history : []
         };
     });
 
-    PLAYER_KEYS.forEach(p => {
-        games.forEach(g => {
-            if (!g.stats[p]) g.stats[p] = {};
-            STAT_KEYS.forEach(k => {
-                if (typeof g.stats[p][k] !== 'number') g.stats[p][k] = 0;
+    games.forEach(game => {
+        if (!game.statsByTeam || typeof game.statsByTeam !== 'object') game.statsByTeam = {};
+        teams.forEach(team => {
+            if (!game.statsByTeam[team.id]) game.statsByTeam[team.id] = createEmptyStats();
+            PLAYER_KEYS.forEach(player => {
+                if (!game.statsByTeam[team.id][player]) game.statsByTeam[team.id][player] = {};
+                STAT_KEYS.forEach(key => {
+                    if (typeof game.statsByTeam[team.id][player][key] !== 'number') {
+                        game.statsByTeam[team.id][player][key] = 0;
+                    }
+                });
             });
+        });
+        game.history.forEach(snapshot => {
+            if (!snapshot.teamId) snapshot.teamId = teams[0].id;
         });
     });
 
@@ -113,8 +153,69 @@ function renderGameSelect() {
     if (removeBtn) removeBtn.disabled = games.length <= 1;
 }
 
+function renderTeamSelect() {
+    const select = document.getElementById('teamSelect');
+    if (!select) return;
+    select.innerHTML = '';
+    teams.forEach(team => {
+        const option = document.createElement('option');
+        option.value = team.id;
+        option.textContent = team.name || 'Team';
+        select.appendChild(option);
+    });
+    select.value = activeTeamId;
+}
+
+function renderPlayerRows() {
+    const body = document.getElementById('statsBody');
+    const totalsRow = document.getElementById('totals-row');
+    if (!body || !totalsRow) return;
+
+    body.querySelectorAll('tr[data-player]').forEach(row => row.remove());
+    getTeamPlayerKeys().forEach(player => {
+        const row = document.createElement('tr');
+        row.dataset.player = player;
+
+        const playerCell = document.createElement('td');
+        playerCell.className = 'player-name';
+        playerCell.textContent = playerNames[player];
+        row.appendChild(playerCell);
+
+        const addCell = (className, text, stat) => {
+            const cell = document.createElement('td');
+            cell.className = className;
+            cell.textContent = text;
+            if (stat) cell.dataset.stat = stat;
+            row.appendChild(cell);
+        };
+
+        addCell('stat-cell', '0', 'serving-good');
+        addCell('stat-cell', '0', 'serving-ace');
+        addCell('stat-cell', '0', 'serving-error');
+        addCell('calc-cell serve-percent', '0%');
+        addCell('stat-cell', '0', 'receive-3');
+        addCell('stat-cell', '0', 'receive-2');
+        addCell('stat-cell', '0', 'receive-1');
+        addCell('stat-cell', '0', 'receive-0');
+        addCell('calc-cell receive-percent', '0.00');
+        addCell('stat-cell', '0', 'attacking-atmpts');
+        addCell('stat-cell', '0', 'attacking-kills');
+        addCell('stat-cell', '0', 'attacking-error');
+        addCell('calc-cell hit-percent', '0.000');
+        addCell('stat-cell', '0', 'digging-good');
+        addCell('stat-cell', '0', 'digging-bad');
+        addCell('calc-cell dig-percent', '0%');
+        body.insertBefore(row, totalsRow);
+    });
+}
+
 function savePlayerNames() {
     localStorage.setItem('volleyballPlayerNames', JSON.stringify(playerNames));
+}
+
+function saveTeams() {
+    localStorage.setItem('volleyballTeams', JSON.stringify(teams));
+    localStorage.setItem('volleyballActiveTeam', activeTeamId);
 }
 
 function saveTournamentName() {
@@ -126,9 +227,153 @@ function saveGames() {
 }
 
 function ensurePlayerNames() {
-    PLAYER_KEYS.forEach(player => {
-        if (!playerNames[player]) playerNames[player] = player;
+    const team = getActiveTeam();
+    if (!team) return;
+    playerNames = team.players;
+}
+
+function normalizeTeams() {
+    if (!Array.isArray(teams) || teams.length === 0) teams = [createDefaultTeam()];
+    const usedIds = new Set();
+    teams = teams.slice(0, 3).map((team, index) => {
+        let id = typeof team?.id === 'string' && team.id ? team.id : `team-${index + 1}`;
+        while (usedIds.has(id)) id = `team-${id}-${index + 1}`;
+        usedIds.add(id);
+        const players = { ...(team?.players || {}) };
+        if (index > 0) {
+            Object.entries(DEFAULT_PLAYER_NAMES).forEach(([player, defaultName]) => {
+                if (players[player] === defaultName) delete players[player];
+            });
+        }
+        const normalized = createDefaultTeam(
+            id,
+            typeof team?.name === 'string' && team.name.trim() ? team.name.trim() : `Team ${index + 1}`,
+            players
+        );
+        return normalized;
     });
+    if (!teams.some(team => team.id === activeTeamId)) activeTeamId = teams[0].id;
+    playerNames = getActiveTeam().players;
+}
+
+function renderTeamsEditor() {
+    const editor = document.getElementById('teamsEditor');
+    if (!editor) return;
+    editor.innerHTML = '';
+
+    teams.forEach((team, teamIndex) => {
+        const section = document.createElement('section');
+        section.className = 'team-editor';
+        section.dataset.teamId = team.id;
+
+        const heading = document.createElement('div');
+        heading.className = 'team-editor-header';
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.value = team.name;
+        nameInput.maxLength = 40;
+        nameInput.setAttribute('aria-label', `Team ${teamIndex + 1} name`);
+        nameInput.dataset.teamName = '';
+        heading.appendChild(nameInput);
+
+        if (teams.length > 1) {
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'control-btn remove-team-btn';
+            removeButton.textContent = 'Delete';
+            removeButton.dataset.removeTeam = team.id;
+            removeButton.setAttribute('aria-label', `Delete ${team.name}`);
+            heading.appendChild(removeButton);
+        }
+        section.appendChild(heading);
+
+        const playerList = document.createElement('div');
+        playerList.className = 'team-player-list';
+        PLAYER_KEYS.forEach((player, index) => {
+            const field = document.createElement('div');
+            field.className = 'team-player-field';
+            const label = document.createElement('label');
+            label.textContent = `Player ${index + 1}`;
+            const input = document.createElement('input');
+            input.className = 'team-player-input';
+            input.type = 'text';
+            input.value = team.players[player] || '';
+            input.maxLength = 40;
+            input.dataset.playerKey = player;
+            input.setAttribute('aria-label', `Player ${index + 1} name for ${team.name}`);
+            field.append(label, input);
+            playerList.appendChild(field);
+        });
+        section.appendChild(playerList);
+        editor.appendChild(section);
+    });
+
+    document.getElementById('addTeamBtn').disabled = teams.length >= 3;
+}
+
+function openTeamsEditor() {
+    renderTeamsEditor();
+    const modal = document.getElementById('teamsModal');
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeTeamsEditor() {
+    const modal = document.getElementById('teamsModal');
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function addTeam() {
+    if (teams.length >= 3) return;
+    let number = 1;
+    let id = `team-${number}`;
+    while (teams.some(team => team.id === id)) {
+        number += 1;
+        id = `team-${number}`;
+    }
+    const team = createDefaultTeam(id, `Team ${number}`, {});
+    teams.push(team);
+    games.forEach(game => {
+        game.statsByTeam[team.id] = createEmptyStats();
+    });
+    saveTeams();
+    saveGames();
+    renderTeamsEditor();
+    renderTeamSelect();
+}
+
+function removeTeam(teamId) {
+    if (teams.length <= 1) return;
+    const team = teams.find(item => item.id === teamId);
+    if (!team || !confirm(`Delete ${team.name} and its saved stats? This cannot be undone.`)) return;
+    teams = teams.filter(item => item.id !== teamId);
+    games.forEach(game => {
+        delete game.statsByTeam[teamId];
+        game.history = game.history.filter(snapshot => snapshot.teamId !== teamId);
+    });
+    if (activeTeamId === teamId) activeTeamId = teams[0].id;
+    playerNames = getActiveTeam().players;
+    saveTeams();
+    savePlayerNames();
+    saveGames();
+    renderTeamsEditor();
+    renderTeamSelect();
+    renderPlayerRows();
+    updateDisplay();
+    updateUndoButton();
+}
+
+function selectTeam(teamId) {
+    if (!teams.some(team => team.id === teamId)) return;
+    activeTeamId = teamId;
+    playerNames = getActiveTeam().players;
+    saveTeams();
+    savePlayerNames();
+    renderTeamSelect();
+    renderPlayerRows();
+    updateDisplay();
+    updateUndoButton();
 }
 
 function migrateLegacyIfNeeded() {
@@ -143,7 +388,7 @@ function migrateLegacyIfNeeded() {
             PLAYER_KEYS.forEach(p => {
                 STAT_KEYS.forEach(k => {
                     const v = legacyStats?.[p]?.[k];
-                    if (typeof v === 'number') games[0].stats[p][k] = v;
+                    if (typeof v === 'number') games[0].statsByTeam[teams[0].id][p][k] = v;
                 });
             });
         }
@@ -164,10 +409,20 @@ function loadState() {
     const savedNames = localStorage.getItem('volleyballPlayerNames');
     const savedGames = localStorage.getItem('volleyballGames');
     const savedTournamentName = localStorage.getItem('volleyballTournamentName');
+    const savedTeams = localStorage.getItem('volleyballTeams');
+    const savedActiveTeam = localStorage.getItem('volleyballActiveTeam');
 
     if (savedNames) {
         try { playerNames = JSON.parse(savedNames) || {}; } catch (_) { playerNames = {}; }
     }
+
+    if (savedTeams) {
+        try { teams = JSON.parse(savedTeams) || []; } catch (_) { teams = []; }
+    } else {
+        teams = [createDefaultTeam('team-1', 'Team 1', savedNames ? playerNames : DEFAULT_PLAYER_NAMES)];
+    }
+    activeTeamId = savedActiveTeam || teams[0]?.id || 'team-1';
+    normalizeTeams();
 
     if (savedTournamentName) {
         tournamentName = savedTournamentName;
@@ -197,14 +452,22 @@ function getActiveGame() {
 }
 
 function getStatsForView() {
-    if (!isTournamentView()) return getActiveGame().stats;
+    const players = getTeamPlayerKeys();
+    if (!isTournamentView()) {
+        const gameStats = getStatsForGame(getActiveGame());
+        const activeStats = createEmptyStats();
+        players.forEach(player => {
+            STAT_KEYS.forEach(key => activeStats[player][key] = gameStats[player]?.[key] || 0);
+        });
+        return activeStats;
+    }
 
     // Tournament totals: sum all games into per-player totals
     const agg = createEmptyStats();
     games.forEach(g => {
-        PLAYER_KEYS.forEach(p => {
+        players.forEach(p => {
             STAT_KEYS.forEach(k => {
-                agg[p][k] += g.stats?.[p]?.[k] || 0;
+                agg[p][k] += getStatsForGame(g)[p]?.[k] || 0;
             });
         });
     });
@@ -213,7 +476,8 @@ function getStatsForView() {
 
 function pushHistorySnapshot(game) {
     const snap = {
-        stats: JSON.parse(JSON.stringify(game.stats)),
+        teamId: activeTeamId,
+        stats: JSON.parse(JSON.stringify(getStatsForGame(game))),
         playerNames: JSON.parse(JSON.stringify(playerNames)),
         name: game.name
     };
@@ -519,7 +783,7 @@ function updateUndoButton() {
         return;
     }
     const g = getActiveGame();
-    undoBtn.disabled = !g || g.history.length === 0;
+    undoBtn.disabled = !g || g.history.length === 0 || g.history[g.history.length - 1].teamId !== activeTeamId;
 }
 
 function undoLastChange() {
@@ -528,9 +792,13 @@ function undoLastChange() {
     if (!g || g.history.length === 0) return;
 
     const previousState = g.history.pop();
-    g.stats = previousState.stats;
+    g.statsByTeam[activeTeamId] = previousState.stats;
     g.name = previousState.name || '';
-    playerNames = previousState.playerNames || playerNames;
+    if (previousState.playerNames) {
+        getActiveTeam().players = previousState.playerNames;
+        playerNames = getActiveTeam().players;
+        saveTeams();
+    }
     saveGames();
     savePlayerNames();
     updateGameNameUI();
@@ -544,7 +812,8 @@ function incrementStat(player, stat) {
     if (!g) return;
 
     pushHistorySnapshot(g);
-    g.stats[player][stat] = (g.stats[player][stat] || 0) + 1;
+    const stats = getStatsForGame(g);
+    stats[player][stat] = (stats[player][stat] || 0) + 1;
     saveGames();
     updateDisplay();
     updateUndoButton();
@@ -556,8 +825,8 @@ function resetStats() {
     if (!g) return;
 
     if (confirm('Are you sure you want to reset this game? This cannot be undone.')) {
-        g.history = [];
-        g.stats = createEmptyStats();
+        g.history = g.history.filter(snapshot => snapshot.teamId !== activeTeamId);
+        g.statsByTeam[activeTeamId] = createEmptyStats();
         g.name = '';
         saveGames();
         updateGameNameUI();
@@ -579,17 +848,21 @@ function hardReset() {
         // Clear all localStorage items related to volleyball stats
         localStorage.removeItem('volleyballGames');
         localStorage.removeItem('volleyballPlayerNames');
+        localStorage.removeItem('volleyballTeams');
+        localStorage.removeItem('volleyballActiveTeam');
         localStorage.removeItem('volleyballTournamentName');
         localStorage.removeItem('volleyballStats'); // legacy
         localStorage.removeItem('volleyballGameName'); // legacy
         
+        // Reset player names
+        teams = [createDefaultTeam()];
+        activeTeamId = teams[0].id;
+        playerNames = teams[0].players;
+        ensurePlayerNames();
+
         // Reset games array back to a single empty game
         nextGameId = 1;
         games = [createEmptyGame('Game 1')];
-        
-        // Reset player names
-        playerNames = {};
-        ensurePlayerNames();
         
         // Reset tournament name
         tournamentName = '';
@@ -600,10 +873,13 @@ function hardReset() {
         // Save the empty state
         saveGames();
         savePlayerNames();
+        saveTeams();
         saveTournamentName();
         
         // Update UI
         setActiveTab('tournament');
+        renderTeamSelect();
+        renderPlayerRows();
         updateDisplay();
         updateGameNameUI();
         updateUndoButton();
@@ -623,7 +899,7 @@ function hardReset() {
 
 // Export to CSV
 function exportToCSV() {
-    const players = PLAYER_KEYS.slice();
+    const players = getTeamPlayerKeys();
 
     const escapeCsv = (value) => {
         const str = String(value ?? '');
@@ -895,6 +1171,8 @@ function handleEditAccept() {
         
         // Update player name
         playerNames[oldPlayer] = newValue || oldPlayer;
+        getActiveTeam().players = playerNames;
+        saveTeams();
         savePlayerNames();
         saveGames();
         updateDisplay();
@@ -908,7 +1186,7 @@ function handleEditAccept() {
             const player = editingContext.player;
             const stat = editingContext.stat;
 
-            g.stats[player][stat] = numValue;
+            getStatsForGame(g)[player][stat] = numValue;
             saveGames();
             updateDisplay();
             updateUndoButton();
@@ -928,7 +1206,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load saved state (games + roster)
     loadState();
     saveGames();
+    saveTeams();
     renderGameSelect();
+    renderTeamSelect();
+    renderPlayerRows();
     
     // Tournament totals tab
     const tournamentTab = document.getElementById('tournamentTab');
@@ -949,6 +1230,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('addGameBtn').addEventListener('click', addGame);
     document.getElementById('removeGameBtn').addEventListener('click', removeSelectedGame);
+    document.getElementById('teamSelect').addEventListener('change', event => selectTeam(event.target.value));
+    document.getElementById('teamsBtn').addEventListener('click', openTeamsEditor);
+    document.getElementById('closeTeamsBtn').addEventListener('click', closeTeamsEditor);
+    document.getElementById('addTeamBtn').addEventListener('click', addTeam);
+    document.getElementById('teamsEditor').addEventListener('input', event => {
+        const section = event.target.closest('.team-editor');
+        const team = teams.find(item => item.id === section?.dataset.teamId);
+        if (!team) return;
+        if (event.target.hasAttribute('data-team-name')) {
+            team.name = event.target.value.trim() || `Team ${teams.indexOf(team) + 1}`;
+            renderTeamSelect();
+        } else if (event.target.dataset.playerKey) {
+            const playerName = event.target.value.trim();
+            if (playerName) team.players[event.target.dataset.playerKey] = playerName;
+            else delete team.players[event.target.dataset.playerKey];
+            if (team.id === activeTeamId) {
+                playerNames = team.players;
+                renderPlayerRows();
+                updateDisplay();
+            }
+        }
+        saveTeams();
+        savePlayerNames();
+    });
+    document.getElementById('teamsEditor').addEventListener('click', event => {
+        const button = event.target.closest('[data-remove-team]');
+        if (button) removeTeam(button.dataset.removeTeam);
+    });
+    document.getElementById('teamsModal').addEventListener('click', event => {
+        if (event.target.id === 'teamsModal') closeTeamsEditor();
+    });
 
     // Edit button
     document.getElementById('editBtn').addEventListener('click', toggleEditMode);
@@ -990,68 +1302,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Add click listeners to player names
-    document.querySelectorAll('.player-name').forEach(nameCell => {
-        nameCell.addEventListener('click', (e) => {
-            if (!editMode) return;
-            if (isTournamentView()) return;
-            
-            const row = e.target.closest('tr');
-            const player = row.getAttribute('data-player');
-            if (!player) return;
-            const currentName = playerNames[player] || player;
-            
-            editingContext = {
-                type: 'player',
-                player: player
-            };
-            
-            showEditModal('Edit Player Name', 'Player Name:', currentName, handleEditAccept);
-        });
+    const statsTable = document.getElementById('statsTable');
+    statsTable.addEventListener('click', event => {
+        const nameCell = event.target.closest('.player-name');
+        const row = event.target.closest('tr');
+        const player = row?.getAttribute('data-player');
+        if (nameCell && editMode && !isTournamentView() && player) {
+            editingContext = { type: 'player', player };
+            showEditModal('Edit Player Name', 'Player Name:', playerNames[player] || player, handleEditAccept);
+            return;
+        }
+
+        const cell = event.target.closest('.stat-cell');
+        const stat = cell?.getAttribute('data-stat');
+        if (!cell || !player || isTournamentView()) return;
+        if (editMode) {
+            const currentValue = getStatsForGame(getActiveGame())[player]?.[stat] || 0;
+            editingContext = { type: 'stat', player, stat };
+            showEditModal('Edit Stat Value', 'Value:', currentValue.toString(), handleEditAccept);
+            return;
+        }
+
+        incrementStat(player, stat);
+        cell.style.transform = 'scale(0.9)';
+        setTimeout(() => {
+            cell.style.transform = '';
+        }, 150);
     });
-    
-    // Add click listeners to stat cells
-    document.querySelectorAll('.stat-cell').forEach(cell => {
-        cell.addEventListener('click', (e) => {
-            const row = e.target.closest('tr');
-            const player = row.getAttribute('data-player');
-            const stat = e.target.getAttribute('data-stat');
-            if (!player) return;
-            if (isTournamentView()) return;
-            
-            if (editMode) {
-                // Edit mode: show edit dialog
-                const currentValue = getActiveGame()?.stats?.[player]?.[stat] || 0;
-                
-                editingContext = {
-                    type: 'stat',
-                    player: player,
-                    stat: stat
-                };
-                
-                showEditModal('Edit Stat Value', 'Value:', currentValue.toString(), handleEditAccept);
-            } else {
-                // Normal mode: increment stat
-                incrementStat(player, stat);
-                
-                // Visual feedback
-                e.target.style.transform = 'scale(0.9)';
-                setTimeout(() => {
-                    e.target.style.transform = '';
-                }, 150);
-            }
-        });
-        
-        // Prevent double-tap zoom on mobile
-        let lastTap = 0;
-        cell.addEventListener('touchend', (e) => {
-            const currentTime = new Date().getTime();
-            const tapLength = currentTime - lastTap;
-            if (tapLength < 300 && tapLength > 0) {
-                e.preventDefault();
-            }
-            lastTap = currentTime;
-        });
+
+    let lastTap = 0;
+    statsTable.addEventListener('touchend', event => {
+        const cell = event.target.closest('.stat-cell');
+        if (!cell) return;
+        const currentTime = Date.now();
+        const tapLength = currentTime - lastTap;
+        if (tapLength < 300 && tapLength > 0) event.preventDefault();
+        lastTap = currentTime;
     });
     
     // Reset button
@@ -1077,6 +1363,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.hidden) {
             saveGames();
             savePlayerNames();
+            saveTeams();
             saveTournamentName();
         }
     });
@@ -1085,6 +1372,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('beforeunload', () => {
         saveGames();
         savePlayerNames();
+        saveTeams();
         saveTournamentName();
     });
 });

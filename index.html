@@ -18,6 +18,7 @@
                 <button id="undoBtn" class="control-btn" disabled>Undo</button>
                 <button id="resetBtn" class="control-btn">Reset Game</button>
                 <button id="exportBtn" class="control-btn">Export CSV</button>
+                <button id="teamsBtn" class="control-btn">Teams</button>
                 <button id="hardResetBtn" class="control-btn">Hard Reset</button>
             </div>
         </header>
@@ -26,6 +27,8 @@
         <div class="tabs" id="tabs">
             <button class="tab-btn active" id="tournamentTab" data-tab="tournament">Tournament Totals</button>
             <div class="game-select-group">
+                <label for="teamSelect">Team</label>
+                <select id="teamSelect" aria-label="Select a team"></select>
                 <label for="gameSelect">Games</label>
                 <select id="gameSelect" aria-label="Select a game"></select>
                 <button id="addGameBtn" class="control-btn">Add Game</button>
@@ -37,6 +40,17 @@
         <div class="game-name-row">
             <label for="gameName">Game Name:</label>
             <input id="gameName" type="text" placeholder="e.g., Match vs Hawks">
+        </div>
+
+        <div id="teamsModal" class="modal" aria-hidden="true">
+            <div class="modal-content teams-modal-content">
+                <div class="teams-modal-heading">
+                    <h2>Manage Teams</h2>
+                    <button id="closeTeamsBtn" class="control-btn" aria-label="Close team manager">Done</button>
+                </div>
+                <div id="teamsEditor" class="teams-editor"></div>
+                <button id="addTeamBtn" class="control-btn">Add Team</button>
+            </div>
         </div>
         
         <!-- Edit Modal -->
@@ -83,7 +97,7 @@
                         <th>Dig %</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="statsBody">
                     <tr data-player="ZOE">
                         <td class="player-name">ZOE</td>
                         <td class="stat-cell" data-stat="serving-good">0</td>
