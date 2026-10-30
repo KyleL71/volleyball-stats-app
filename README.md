@@ -20,8 +20,9 @@ A custom web application for tracking volleyball statistics on your Samsung Gala
 
 2. **Open the app:**
    - Open a web browser on your tablet (Chrome, Samsung Internet, etc.)
-   - Navigate to the `index.html` file
-   - The app will work immediately
+   - Open GitHub Pages link - https://kylel71.github.io/volleyball-stats-app/
+   - Click 3 dots in top right of browser
+   - Select "Install and Create"
 
 3. **Optional - Add to Home Screen (PWA):**
    - In your browser, tap the menu (three dots)
