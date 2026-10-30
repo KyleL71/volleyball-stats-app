@@ -12,10 +12,11 @@ let playerNames = {};
 // Tournament name
 let tournamentName = '';
 
-// 27 games of stats, each with its own history stack for Undo
+// Games of stats, each with its own history stack for Undo
 let games = [];
+let nextGameId = 1;
 
-// Active tab: -1 = Tournament Totals, 0-26 = Game 1..27
+// Active tab: -1 = Tournament Totals, 0+ = selected game index
 let activeGameIndex = -1;
 
 // Edit mode state (only meaningful for game tabs)
@@ -32,13 +33,84 @@ function createEmptyStats() {
     return s;
 }
 
-function createEmptyGame(index) {
+function createEmptyGame(name = '', id = null) {
+    const gameId = id == null ? nextGameId++ : id;
+    if (gameId >= nextGameId) nextGameId = gameId + 1;
     return {
-        id: index,
-        name: '',
+        id: gameId,
+        name: name || '',
         stats: createEmptyStats(),
         history: []
     };
+}
+
+function gameHasData(game) {
+    if ((game?.name || '').trim()) return true;
+    if (!game?.stats) return false;
+    return PLAYER_KEYS.some(p => STAT_KEYS.some(k => (game.stats[p]?.[k] || 0) !== 0));
+}
+
+function gameLabel(game, index) {
+    const name = (game?.name || '').trim();
+    return name || `Game ${index + 1}`;
+}
+
+function normalizeGames() {
+    if (!Array.isArray(games)) games = [];
+    games = games.map((g, i) => {
+        const game = g && typeof g === 'object' ? g : {};
+        const id = typeof game.id === 'number' ? game.id : i;
+        if (id >= nextGameId) nextGameId = id + 1;
+        return {
+            id,
+            name: typeof game.name === 'string' ? game.name : '',
+            stats: game.stats || createEmptyStats(),
+            history: Array.isArray(game.history) ? game.history : []
+        };
+    });
+
+    PLAYER_KEYS.forEach(p => {
+        games.forEach(g => {
+            if (!g.stats[p]) g.stats[p] = {};
+            STAT_KEYS.forEach(k => {
+                if (typeof g.stats[p][k] !== 'number') g.stats[p][k] = 0;
+            });
+        });
+    });
+
+    // Old builds always stored 27 games; drop unused empty slots once.
+    if (games.length === 27) {
+        const kept = games.filter(gameHasData);
+        games = kept.length ? kept : [games[0]];
+    }
+
+    if (games.length === 0) {
+        nextGameId = 1;
+        games = [createEmptyGame('Game 1')];
+    }
+}
+
+function renderGameSelect() {
+    const select = document.getElementById('gameSelect');
+    const removeBtn = document.getElementById('removeGameBtn');
+    if (!select) return;
+
+    select.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Select a game';
+    select.appendChild(placeholder);
+
+    games.forEach((g, i) => {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = gameLabel(g, i);
+        select.appendChild(opt);
+    });
+
+    select.value = isTournamentView() ? '' : String(activeGameIndex);
+    select.classList.toggle('active', !isTournamentView());
+    if (removeBtn) removeBtn.disabled = games.length <= 1;
 }
 
 function savePlayerNames() {
@@ -105,19 +177,14 @@ function loadState() {
         try { games = JSON.parse(savedGames) || []; } catch (_) { games = []; }
     }
 
-    // Ensure 27 games exist
-    if (!Array.isArray(games)) games = [];
-    for (let i = 0; i < 27; i++) {
-        if (!games[i]) games[i] = createEmptyGame(i);
-        if (!games[i].stats) games[i].stats = createEmptyStats();
-        if (!Array.isArray(games[i].history)) games[i].history = [];
-        if (typeof games[i].name !== 'string') games[i].name = '';
-    }
+    nextGameId = 1;
+    normalizeGames();
 
     ensurePlayerNames();
     savePlayerNames();
 
     migrateLegacyIfNeeded();
+    normalizeGames();
 }
 
 function isTournamentView() {
@@ -189,19 +256,63 @@ function updateGameNameUI() {
 }
 
 function setActiveTab(tab, gameIndex) {
-    if (tab === 'tournament') activeGameIndex = -1;
-    if (tab === 'game') activeGameIndex = Number(gameIndex);
+    if (tab === 'tournament') {
+        activeGameIndex = -1;
+    } else if (tab === 'game') {
+        const idx = Number(gameIndex);
+        if (!Number.isInteger(idx) || idx < 0 || idx >= games.length) return;
+        activeGameIndex = idx;
+    }
 
-    // Update tab button state
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    const selector = tab === 'tournament'
-        ? '.tab-btn[data-tab="tournament"]'
-        : `.tab-btn[data-tab="game"][data-game-index="${activeGameIndex}"]`;
-    const activeBtn = document.querySelector(selector);
-    if (activeBtn) activeBtn.classList.add('active');
+    const tournamentTab = document.getElementById('tournamentTab');
+    if (tournamentTab) tournamentTab.classList.toggle('active', isTournamentView());
 
+    renderGameSelect();
     updateGameNameUI();
     updateDisplay();
+}
+
+function addGame() {
+    editingContext = { type: 'add-game' };
+    showEditModal('Add Game', 'Game Name:', `Game ${games.length + 1}`);
+}
+
+function finishAddGame(name) {
+    const trimmed = (name || '').trim();
+    games.push(createEmptyGame(trimmed || `Game ${games.length + 1}`));
+    saveGames();
+    setActiveTab('game', games.length - 1);
+}
+
+function removeSelectedGame() {
+    if (games.length <= 1) {
+        alert('You must keep at least one game.');
+        return;
+    }
+
+    const select = document.getElementById('gameSelect');
+    const fromSelect = select?.value === '' ? NaN : Number(select.value);
+    const indexToRemove = isTournamentView() ? fromSelect : activeGameIndex;
+
+    if (!Number.isInteger(indexToRemove) || indexToRemove < 0 || indexToRemove >= games.length) {
+        alert('Select a game from the dropdown first, then click Remove Game.');
+        return;
+    }
+
+    const label = gameLabel(games[indexToRemove], indexToRemove);
+    if (!confirm(`Remove "${label}"? Its stats will no longer count toward tournament totals.`)) return;
+
+    games.splice(indexToRemove, 1);
+    saveGames();
+
+    if (isTournamentView() || activeGameIndex === indexToRemove) {
+        const nextIndex = Math.min(indexToRemove, games.length - 1);
+        setActiveTab('game', nextIndex);
+        return;
+    }
+
+    if (activeGameIndex > indexToRemove) activeGameIndex -= 1;
+    setActiveTab('game', activeGameIndex);
 }
 
 // Update the display with current stats
@@ -472,11 +583,9 @@ function hardReset() {
         localStorage.removeItem('volleyballStats'); // legacy
         localStorage.removeItem('volleyballGameName'); // legacy
         
-        // Reset games array
-        games = [];
-        for (let i = 0; i < 27; i++) {
-            games[i] = createEmptyGame(i);
-        }
+        // Reset games array back to a single empty game
+        nextGameId = 1;
+        games = [createEmptyGame('Game 1')];
         
         // Reset player names
         playerNames = {};
@@ -759,6 +868,15 @@ function hideEditModal() {
 // Handle edit accept
 function handleEditAccept() {
     if (!editingContext) return;
+
+    const newValue = document.getElementById('editInput').value.trim();
+
+    if (editingContext.type === 'add-game') {
+        finishAddGame(newValue);
+        hideEditModal();
+        return;
+    }
+
     if (isTournamentView()) {
         hideEditModal();
         return;
@@ -768,8 +886,6 @@ function handleEditAccept() {
         hideEditModal();
         return;
     }
-    
-    const newValue = document.getElementById('editInput').value.trim();
     
     if (editingContext.type === 'player') {
         // Save to history before changing
@@ -809,18 +925,30 @@ function handleEditCancel() {
 
 // Set up event listeners
 document.addEventListener('DOMContentLoaded', () => {
-    // Load saved state (27 games + roster)
+    // Load saved state (games + roster)
     loadState();
     saveGames();
+    renderGameSelect();
     
-    // Tabs
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tab = btn.getAttribute('data-tab');
-            const idx = btn.getAttribute('data-game-index');
-            setActiveTab(tab, idx);
+    // Tournament totals tab
+    const tournamentTab = document.getElementById('tournamentTab');
+    if (tournamentTab) {
+        tournamentTab.addEventListener('click', () => setActiveTab('tournament'));
+    }
+
+    const gameSelect = document.getElementById('gameSelect');
+    if (gameSelect) {
+        gameSelect.addEventListener('change', () => {
+            if (gameSelect.value === '') {
+                setActiveTab('tournament');
+                return;
+            }
+            setActiveTab('game', gameSelect.value);
         });
-    });
+    }
+
+    document.getElementById('addGameBtn').addEventListener('click', addGame);
+    document.getElementById('removeGameBtn').addEventListener('click', removeSelectedGame);
 
     // Edit button
     document.getElementById('editBtn').addEventListener('click', toggleEditMode);
@@ -857,6 +985,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!g) return;
                 g.name = e.target.value;
                 saveGames();
+                renderGameSelect();
             }
         });
     }

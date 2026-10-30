@@ -40,11 +40,61 @@ header h1 {
 .tabs {
     display: flex;
     gap: 8px;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    align-items: center;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     padding: 10px 2px 5px 2px;
     margin: 5px 0 5px 0;
+}
+
+.game-select-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.game-select-group label {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+#gameSelect {
+    min-width: 180px;
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    border: 2px solid #bdc3c7;
+    border-radius: 999px;
+    background: #ecf0f1;
+    cursor: pointer;
+}
+
+#gameSelect.active {
+    background: #2c3e50;
+    color: white;
+    border-color: #2c3e50;
+}
+
+#addGameBtn {
+    background: #27ae60;
+}
+
+#addGameBtn:active,
+#addGameBtn:hover:not(:disabled) {
+    background: #229954;
+}
+
+#removeGameBtn {
+    background: #e74c3c;
+}
+
+#removeGameBtn:active:not(:disabled),
+#removeGameBtn:hover:not(:disabled) {
+    background: #c0392b;
 }
 
 .tab-btn {
